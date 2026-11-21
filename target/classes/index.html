@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Moedas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 320px;
+        }
+
+        h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #333;
+        }
+
+        .campo {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #resultado {
+            background-color: #e9ecef;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Conversor de Moedas</h2>
+
+        <div class="campo">
+            <label for="moedaOrigem">Moeda de Origem:</label>
+            <select id="moedaOrigem">
+                <option value="">Carregando moedas...</option>
+            </select>
+        </div>
+
+        <div class="campo">
+            <label for="moedaDestino">Moeda a Converter:</label>
+            <select id="moedaDestino">
+                <option value="">Carregando moedas...</option>
+            </select>
+        </div>
+
+        <div class="campo">
+            <label for="valor">Valor:</label>
+            <input type="number" id="valor" placeholder="Ex: 10.00" step="0.01" min="0">
+        </div>
+
+        <button type="button" id="btnConverter" onclick="converterMoeda()">Converter</button>
+
+        <div class="campo" style="margin-top: 15px;">
+            <label for="resultado">Resultado:</label>
+            <input type="text" id="resultado" readonly placeholder="0.00">
+        </div>
+    </div>
+
+    <script>
+
+        async function carregarMoedas() {
+            const selectOrigem = document.getElementById('moedaOrigem');
+            const selectDestino = document.getElementById('moedaDestino');
+
+            try {
+
+                const response = await fetch('/api/moedas');
+                if (!response.ok) {
+                    throw new Error(`Erro na requisicao: ${response.status}`);
+                }
+                const moedas = await response.json();
+
+                moedas.sort((a, b) => a.code.localeCompare(b.code));
+
+                selectOrigem.innerHTML = '';
+                selectDestino.innerHTML = '';
+
+                moedas.forEach(moeda => {
+                    const optOrigem = document.createElement('option');
+                    optOrigem.value = moeda.code;
+                    optOrigem.textContent = `${moeda.code} - ${moeda.name}`;
+
+                    const optDestino = document.createElement('option');
+                    optDestino.value = moeda.code;
+                    optDestino.textContent = `${moeda.code} - ${moeda.name}`;
+
+                    selectOrigem.appendChild(optOrigem);
+                    selectDestino.appendChild(optDestino);
+                });
+
+                selectOrigem.value = 'USD';
+                selectDestino.value = 'BRL';
+
+            } catch (error) {
+                console.error("Erro ao carregar moedas do servidor Java:", error);
+                selectOrigem.innerHTML = '<option value="">Erro ao carregar do Java</option>';
+                selectDestino.innerHTML = '<option value="">Erro ao carregar do Java</option>';
+            }
+        }
+
+        async function converterMoeda() {
+            const origem = document.getElementById('moedaOrigem').value;
+            const destino = document.getElementById('moedaDestino').value;
+            const valorInput = document.getElementById('valor').value;
+            const campoResultado = document.getElementById('resultado');
+            const btnConverter = document.getElementById('btnConverter');
+
+            const valor = parseFloat(valorInput);
+
+            if (!origem || !destino || isNaN(valor) || valor <= 0) {
+                alert("Por favor, selecione as moedas e digite um valor valido.");
+                return;
+            }
+
+            try {
+                btnConverter.disabled = true;
+                campoResultado.value = "Convertendo...";
+
+                const url = `/api/converter?from=${encodeURIComponent(origem)}&to=${encodeURIComponent(destino)}&amount=${encodeURIComponent(valor)}`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`Erro no servidor: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.result !== undefined) {
+                    campoResultado.value = `${data.result.toFixed(2)} ${destino}`;
+                } else {
+                    campoResultado.value = "Erro na conversao";
+                }
+            } catch (error) {
+                console.error("Erro ao converter:", error);
+                campoResultado.value = "Erro ao conectar com o Java";
+            } finally {
+                btnConverter.disabled = false;
+            }
+        }
+        window.onload = carregarMoedas;
+    </script>
+
+</body>
+
+</html>
